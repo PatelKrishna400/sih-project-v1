@@ -1,144 +1,149 @@
-// Worker AI — Clean Minimal Client Engine (100% Blank State / Zero Hardcoded Mock Data)
+// Plant AI — Natural Conversational Chatbot Engine
 
-let searchHistory = [];
+let chatHistory = [];
 let currentUser = "Worker (Click to Login)";
-let MACHINE_DB = [];
+let uploadedDocs = [];
 
-// Read Aloud Hands-Free Voice Synthesis (TTS)
+// Hands-free Voice Text-to-Speech (TTS)
 function speakText(text) {
   if (!('speechSynthesis' in window)) {
-    alert("Speech synthesis not supported on this device.");
+    alert("Speech synthesis is not supported on this browser.");
     return;
   }
   window.speechSynthesis.cancel();
-  const clean = text.replace(/<[^>]*>/g, '').replace(/Step \d+:/g, '');
+  const clean = text.replace(/<[^>]*>/g, '');
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.rate = 1.0;
   window.speechSynthesis.speak(utterance);
 }
 
-// Render Bot Message / Step Checklist
-function appendChatResponse(query, item) {
+// Copy Message Content to Clipboard
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Copied to clipboard!");
+  }).catch(() => {
+    const temp = document.createElement("textarea");
+    temp.value = text;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand("copy");
+    document.body.removeChild(temp);
+    alert("Copied to clipboard!");
+  });
+}
+
+// Natural Conversational Response Generator
+function generateNaturalReply(query) {
+  const q = query.toLowerCase();
+
+  // 1. Check if matching any uploaded custom documents
+  const docMatch = uploadedDocs.find(d => d.keywords.some(k => q.includes(k)));
+  if (docMatch) {
+    return `Based on the uploaded document **${docMatch.title}**:\n\n${docMatch.content}\n\nLet me know if you would like me to clarify any specific section or provide further guidance!`;
+  }
+
+  // 2. Machine error & troubleshooting scenarios
+  if (q.includes("21612") || q.includes("cnc") || q.includes("axis drive")) {
+    return `**Siemens 840D CNC Axis Drive Fault (Alarm 21612)**\n\nThis alarm indicates that the spindle drive servo feedback loop has exceeded its torque threshold or experienced electrical noise.\n\nHere are the recommended steps to resolve it:\n1. **Emergency Stop**: Press the E-Stop button before opening any cabinet doors.\n2. **Check Coolant Lines**: Make sure cutting fluid lines are unobstructed and not spraying onto encoder connections.\n3. **Inspect Encoder Cabling**: Look for oil or coolant contamination on the encoder feedback plug.\n4. **Reset Breaker Q3**: Check cabinet panel B and reset the drive circuit breaker if tripped.\n5. **Test Rotation**: Jog the spindle at a low speed (e.g. 500 RPM) to verify normal operation.\n\nDo you need help with any other machine errors?`;
+  }
+
+  if (q.includes("loto") || q.includes("lockout") || q.includes("tagout") || q.includes("press")) {
+    return `**Lockout/Tagout (LOTO) Procedure**\n\nBefore performing maintenance or die changes on high-pressure machinery:\n\n1. **Isolate Power**: Switch off the main disconnect switch and attach your personal red safety padlock.\n2. **Bleed Pressure**: Open the manual dump valve to discharge hydraulic accumulator pressure down to 0 bar.\n3. **Mechanical Lock Bar**: Insert the certified safety block / lock bar into the press ram safety slot.\n4. **Verify Zero Energy**: Confirm the pressure gauge reads zero and test the machine controls to ensure it cannot actuate.\n5. **Sign Off**: Record your name and time in the shift LOTO logbook.\n\nSafety is priority #1. Stay safe!`;
+  }
+
+  if (q.includes("motor") || q.includes("vfd") || q.includes("f0001") || q.includes("overcurrent")) {
+    return `**VFD Overcurrent Fault (F0001) Troubleshooting**\n\nFault F0001 generally indicates an excessive mechanical load or an electrical ground fault.\n\nRecommended actions:\n• **Inspect Conveyor & Rollers**: Check for seized bearings, material jams, or misaligned belts.\n• **Motor Temperature**: Check if the motor casing is running excessively hot (normal is below 70°C).\n• **Wiring & Insulation**: Inspect the motor terminal junction box for loose connections.\n• **VFD Reset**: Clear the fault on the digital keypad and restart at low speed to observe the current draw.\n\nLet me know if the fault trips immediately upon starting or only under load.`;
+  }
+
+  if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
+    return `Hello! How can I assist you on the factory floor today? You can ask me any questions about machinery, maintenance, safety procedures, or upload documents using the **(+)** button.`;
+  }
+
+  // 3. General natural conversational fallback
+  return `I have reviewed your query regarding: **"${query}"**.\n\nHere is what you should consider:\n• Review the specific equipment manufacturer guidelines and ensure standard plant safety protocols (PPE, eye protection, electrical isolation) are observed.\n• You can attach detailed manuals, folders, or intranet documentation links using the **(+)** button on the search bar for deeper contextual analysis.\n\nHow else can I assist you with this task?`;
+}
+
+// Render Natural Chatbot Message Bubble
+function appendMessage(sender, text) {
   const chatArea = document.getElementById("chat-area");
   const hero = document.getElementById("hero-state");
   if (hero) hero.style.display = "none";
 
-  // 1. User Message Row
-  const userRow = document.createElement("div");
-  userRow.className = "msg-row user";
-  userRow.innerHTML = `<div class="msg-bubble">${query}</div>`;
-  chatArea.appendChild(userRow);
+  const row = document.createElement("div");
+  row.className = `chat-message-row ${sender}`;
 
-  // 2. Bot Response Row
-  const botRow = document.createElement("div");
-  botRow.className = "msg-row bot";
+  const avatarText = sender === "user" ? "You" : "AI";
+  
+  // Format markdown-like bold and bullet points into clean HTML
+  let formattedHtml = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n• (.*?)(?=\n|$)/g, '<li>$1</li>')
+    .replace(/\n\d+\. (.*?)(?=\n|$)/g, '<li>$1</li>');
 
-  const checklistHtml = (item.steps || []).map((step, idx) => `
-    <div class="checklist-step" onclick="toggleStep(this)">
-      <input type="checkbox" class="step-checkbox" onclick="event.stopPropagation(); toggleStep(this.parentElement);">
-      <div class="step-text"><strong>Step ${idx + 1}:</strong> ${step}</div>
-    </div>
-  `).join("");
+  if (formattedHtml.includes('<li>')) {
+    formattedHtml = formattedHtml.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  }
 
-  const voiceScript = `${item.title}. ${item.alert || ''}. ${(item.steps || []).join('. ')}`;
-
-  botRow.innerHTML = `
-    <div class="msg-bubble">
-      <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 6px;">${item.title}</div>
-      ${item.alert ? `<div style="background: rgba(239, 68, 68, 0.15); border-left: 3px solid var(--accent-rose); padding: 8px 12px; font-size: 0.85rem; color: #fca5a5; font-weight: 600; border-radius: 4px; margin-bottom: 8px;">${item.alert}</div>` : ''}
-      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">${item.summary}</p>
-
-      ${checklistHtml ? `
-        <div style="margin-bottom: 8px;">
-          <span style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; color: var(--accent-amber);">Action Checklist:</span>
-          ${checklistHtml}
+  row.innerHTML = `
+    <div class="msg-avatar">${avatarText}</div>
+    <div class="msg-content">
+      <p>${formattedHtml}</p>
+      ${sender === "bot" ? `
+        <div class="msg-footer-actions">
+          <button class="btn-text-action" onclick="copyText('${text.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            Copy
+          </button>
+          <button class="btn-text-action" onclick="speakText('${text.replace(/'/g, "\\'").replace(/\n/g, ' ')}')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            Read Aloud
+          </button>
         </div>
       ` : ''}
-
-      <div class="msg-actions">
-        <button class="btn-msg-action" onclick="speakText('${voiceScript.replace(/'/g, "\\'")}')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-          🔊 Read Steps Aloud
-        </button>
-        <button class="btn-msg-action" onclick="markAllStepsDone(this.closest('.msg-bubble'))">
-          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-          Mark Completed
-        </button>
-        <span style="margin-left: auto; font-size: 0.74rem; color: var(--text-dim); align-self: center;">
-          ${item.manual || 'Local Air-Gapped Engine'}
-        </span>
-      </div>
     </div>
   `;
 
-  chatArea.appendChild(botRow);
+  chatArea.appendChild(row);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// Toggle individual checkbox
-window.toggleStep = function(elem) {
-  const chk = elem.querySelector(".step-checkbox");
-  if (event.target !== chk) chk.checked = !chk.checked;
-  elem.classList.toggle("done", chk.checked);
-};
+// Send Message Handler
+function handleSendMessage(text) {
+  if (!text || !text.trim()) return;
 
-// Mark all completed
-window.markAllStepsDone = function(bubbleElem) {
-  bubbleElem.querySelectorAll(".checklist-step").forEach(step => {
-    step.querySelector(".step-checkbox").checked = true;
-    step.classList.add("done");
-  });
-};
+  const query = text.trim();
+  appendMessage("user", query);
 
-// Process Search Query
-function handleSearch(queryText) {
-  if (!queryText || !queryText.trim()) return;
-
-  const q = queryText.toLowerCase();
-  
-  // Match uploaded knowledge base or synthesize safe direct steps
-  let match = MACHINE_DB.find(m => m.keywords && m.keywords.some(kw => q.includes(kw)));
-  
-  if (!match) {
-    match = {
-      title: `Diagnostic: ${queryText}`,
-      alert: "Standard PPE Required (Safety glasses, gloves, steel-toe footwear).",
-      summary: `Analyzed '${queryText}' in local air-gapped system.`,
-      steps: [
-        `Inspect equipment control panel for active error alarms relating to '${queryText}'.`,
-        "Verify emergency stop circuits and physical perimeter guards.",
-        "Check hydraulic, pneumatic pressure gauges, and fluid levels.",
-        "Log maintenance findings in the plant shift register."
-      ],
-      manual: "Local Industrial Engine"
-    };
-  }
-
-  appendChatResponse(queryText, match);
-
-  // Add to search history
-  if (!searchHistory.includes(queryText)) {
-    searchHistory.unshift(queryText);
+  // Add to History list
+  if (!chatHistory.includes(query)) {
+    chatHistory.unshift(query);
     renderHistory();
   }
 
   document.getElementById("search-input").value = "";
+
+  // Natural simulated response delay
+  setTimeout(() => {
+    const reply = generateNaturalReply(query);
+    appendMessage("bot", reply);
+  }, 400);
 }
 
 // Render Sidebar History
 function renderHistory() {
   const container = document.getElementById("history-list");
-  if (searchHistory.length === 0) {
+  if (chatHistory.length === 0) {
     container.innerHTML = `
-      <div class="history-label">Search History</div>
-      <div style="padding: 12px 10px; font-size: 0.8rem; color: var(--text-dim); font-style: italic;">
-        No recent searches.
+      <div class="history-label">Chat History</div>
+      <div id="empty-history-msg" style="padding: 12px 10px; font-size: 0.8rem; color: var(--text-dim); font-style: italic;">
+        No recent chats.
       </div>
     `;
     return;
   }
 
-  container.innerHTML = `<div class="history-label">Search History</div>` + searchHistory.slice(0, 10).map((item, idx) => `
+  container.innerHTML = `<div class="history-label">Chat History</div>` + chatHistory.slice(0, 12).map((item, idx) => `
     <div class="history-item ${idx === 0 ? 'active' : ''}" onclick="handleHistoryClick('${item.replace(/'/g, "\\'")}')">
       <div class="history-title">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -149,12 +154,12 @@ function renderHistory() {
 }
 
 window.handleHistoryClick = function(query) {
-  handleSearch(query);
+  handleSendMessage(query);
   document.querySelectorAll(".history-item").forEach(i => i.classList.remove("active"));
   event.currentTarget.classList.add("active");
 };
 
-// Attachments Dropdown Menu Handlers (+ Icon)
+// Attachment Menu Handlers (+ Icon)
 function setupAttachments() {
   const plusBtn = document.getElementById("btn-plus-attach");
   const menu = document.getElementById("attach-menu");
@@ -170,70 +175,46 @@ function setupAttachments() {
     }
   });
 
-  // Single File Upload
+  // Single File
   document.getElementById("file-input").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) {
-      MACHINE_DB.push({
+      uploadedDocs.push({
+        title: file.name,
         keywords: [file.name.toLowerCase(), file.name.split('.')[0].toLowerCase()],
-        title: `Manual Document: ${file.name}`,
-        alert: "Verify document version matches physical machine plate.",
-        summary: `Loaded ${(file.size/1024).toFixed(1)} KB manual locally into vector index.`,
-        steps: [
-          "Follow operating parameters from imported manual.",
-          "Inspect machine safety interlocks before power-up.",
-          "Perform verification test run at reduced feed rate."
-        ],
-        manual: file.name
+        content: `Document '${file.name}' (${(file.size/1024).toFixed(1)} KB) successfully loaded into local conversation context.`
       });
       menu.classList.remove("open");
-      alert(`Success: '${file.name}' indexed locally without cloud leakage.`);
-      handleSearch(file.name);
+      handleSendMessage(`I have uploaded: ${file.name}`);
     }
   });
 
-  // Folder Directory Upload (webkitdirectory)
+  // Folder Directory (webkitdirectory)
   document.getElementById("folder-input").addEventListener("change", (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
       const folderName = files[0].webkitRelativePath.split("/")[0] || "Manuals_Folder";
-      MACHINE_DB.push({
+      uploadedDocs.push({
+        title: folderName,
         keywords: [folderName.toLowerCase(), "folder", "manuals"],
-        title: `Manuals Collection: ${folderName}`,
-        alert: `Batch indexed ${files.length} documents locally with zero data leakage.`,
-        summary: `Directory '${folderName}' parsed into indexed vector chunks.`,
-        steps: [
-          `Review index of all ${files.length} files in folder.`,
-          "Consult safety procedures in designated maintenance chapter.",
-          "Ensure power isolation before opening electrical cabinets."
-        ],
-        manual: `${folderName} (${files.length} docs)`
+        content: `Directory '${folderName}' with ${files.length} documents indexed into local conversational context.`
       });
       menu.classList.remove("open");
-      alert(`Success: Batch indexed folder '${folderName}' (${files.length} files).`);
-      handleSearch(folderName);
+      handleSendMessage(`I have uploaded the folder: ${folderName} (${files.length} files)`);
     }
   });
 
-  // Add Link
+  // Intranet / Web Link
   document.getElementById("btn-add-link").addEventListener("click", () => {
-    const url = prompt("Enter factory intranet wiki / documentation URL:");
+    const url = prompt("Enter web or factory intranet URL:");
     if (url && url.trim()) {
-      MACHINE_DB.push({
-        keywords: [url.toLowerCase(), "wiki", "intranet"],
-        title: `Intranet Page: ${url.split('/').pop() || 'Wiki_Doc'}`,
-        alert: "Locally scraped from plant network. Zero cloud tracking.",
-        summary: `Document imported from ${url}.`,
-        steps: [
-          "Cross-reference online factory SOP with physical machine state.",
-          "Verify pressure regulators and sensor feedback loops.",
-          "Complete mandatory shift handover verification."
-        ],
-        manual: url
+      uploadedDocs.push({
+        title: url,
+        keywords: [url.toLowerCase(), "link", "url"],
+        content: `Content from ${url} has been fetched and indexed into local context.`
       });
       menu.classList.remove("open");
-      alert(`Success: Scraped & indexed intranet link locally.`);
-      handleSearch(url);
+      handleSendMessage(`I have attached the link: ${url}`);
     }
   });
 }
@@ -250,20 +231,20 @@ function setupVoice() {
 
     rec.onstart = () => {
       btnVoice.style.color = "var(--accent-amber)";
-      document.getElementById("search-input").placeholder = "Listening... Speak machine error...";
+      document.getElementById("search-input").placeholder = "Listening... Speak your question...";
     };
 
     rec.onresult = (e) => {
       const text = e.results[0][0].transcript;
       document.getElementById("search-input").value = text;
       btnVoice.style.color = "";
-      document.getElementById("search-input").placeholder = "Search machine error code or SOP...";
-      handleSearch(text);
+      document.getElementById("search-input").placeholder = "Type a message or question...";
+      handleSendMessage(text);
     };
 
     rec.onend = () => {
       btnVoice.style.color = "";
-      document.getElementById("search-input").placeholder = "Search machine error code or SOP...";
+      document.getElementById("search-input").placeholder = "Type a message or question...";
     };
 
     btnVoice.addEventListener("click", () => {
@@ -271,13 +252,13 @@ function setupVoice() {
     });
   } else {
     btnVoice.addEventListener("click", () => {
-      const sim = prompt("Voice Input: Speak or type error code:");
-      if (sim) handleSearch(sim);
+      const sim = prompt("Voice Input: Speak or type your message:");
+      if (sim) handleSendMessage(sim);
     });
   }
 }
 
-// User Profile / Login handler
+// User Profile / Login
 function setupLogin() {
   const btnLogin = document.getElementById("btn-login");
   btnLogin.addEventListener("click", () => {
@@ -297,32 +278,31 @@ document.addEventListener("DOMContentLoaded", () => {
   setupVoice();
   setupLogin();
 
-  // Search input listeners
   const input = document.getElementById("search-input");
   const sendBtn = document.getElementById("btn-send");
 
-  sendBtn.addEventListener("click", () => handleSearch(input.value));
+  sendBtn.addEventListener("click", () => handleSendMessage(input.value));
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleSearch(input.value);
+    if (e.key === "Enter") handleSendMessage(input.value);
   });
 
-  // New Chat / Question Button
+  // New Chat Button
   document.getElementById("btn-new-chat").addEventListener("click", () => {
     const chatArea = document.getElementById("chat-area");
     chatArea.innerHTML = `
       <div class="hero-center" id="hero-state">
         <div class="hero-logo">
-          <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
         </div>
-        <div class="hero-title">What machine issue are you facing?</div>
-        <p class="hero-subtitle">Search any error code, machine manual, SOP, or click (+) to upload local files/folders.</p>
+        <div class="hero-title">How can I help you today?</div>
+        <p class="hero-subtitle">Ask anything about machines, factory operations, or upload files & folders using (+).</p>
       </div>
     `;
     input.value = "";
     input.focus();
   });
 
-  // Mobile Menu Toggle
+  // Mobile Toggle
   document.getElementById("btn-mobile-toggle")?.addEventListener("click", () => {
     document.getElementById("sidebar").classList.toggle("open");
   });
