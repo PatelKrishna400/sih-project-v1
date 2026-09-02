@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worker AI — Clean Machine Intelligence</title>
+  <meta name="description" content="Minimal, clean, air-gapped AI assistant for factory workers with chat history, instant search bar, and attachment menu.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Left Sidebar Menu -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Top Brand & New Chat -->
+    <div class="sidebar-header">
+      <div class="project-brand">
+        <div class="project-icon">⚡</div>
+        <div class="project-title">WORKER AI</div>
+      </div>
+
+      <button class="btn-new-chat" id="btn-new-chat">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Question
+      </button>
+    </div>
+
+    <!-- History Section -->
+    <div class="history-container" id="history-list">
+      <div class="history-label">Recent Searches</div>
+      
+      <div class="history-item active" data-query="Siemens 840D CNC Alarm 21612 Axis Drive Fault">
+        <div class="history-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          CNC Alarm 21612
+        </div>
+      </div>
+
+      <div class="history-item" data-query="Hydraulic Press 500T Lockout Tagout LOTO safety protocol">
+        <div class="history-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hydraulic LOTO Safety
+        </div>
+      </div>
+
+      <div class="history-item" data-query="Conveyor Motor VFD Fault F0001 overcurrent reset">
+        <div class="history-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Motor VFD Fault F0001
+        </div>
+      </div>
+
+      <div class="history-item" data-query="KUKA robot collision error 38101 reset steps">
+        <div class="history-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          KUKA Robot Collision
+        </div>
+      </div>
+
+      <div class="history-item" data-query="Daily ISO VG32 spindle lubrication checklist">
+        <div class="history-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Spindle Lubrication
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Login Button -->
+    <div class="sidebar-footer">
+      <button class="btn-login" id="btn-login">
+        <div class="avatar-badge">👤</div>
+        <div style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2;">
+          <span style="font-size: 0.85rem;" id="user-display-name">Worker Profile</span>
+          <span style="font-size: 0.72rem; color: var(--accent-emerald);">● Shift Active (Login)</span>
+        </div>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Canvas -->
+  <main class="main-wrapper">
+    <!-- Mobile Toggle Header -->
+    <div class="mobile-header">
+      <button class="btn-menu-toggle" id="btn-mobile-toggle">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span style="font-weight: 700; font-size: 0.95rem;">WORKER AI</span>
+      <span style="font-size: 0.75rem; color: var(--accent-emerald);">🔒 Air-Gapped</span>
+    </div>
+
+    <!-- Chat Messages Stream & Clean Hero -->
+    <div class="chat-scroll-area" id="chat-area">
+      <!-- Clean Hero State (Shown when empty) -->
+      <div class="hero-center" id="hero-state">
+        <div class="hero-logo">
+          <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="hero-title">What machine issue are you facing?</div>
+        <p class="hero-subtitle">Search any error code, machine manual, SOP, or click (+) to upload local files/folders.</p>
+      </div>
+    </div>
+
+    <!-- Center Search / Text Bar (Bottom Floating) -->
+    <div class="center-input-container">
+      <div class="search-bar-wrapper">
+        <!-- Plus Icon for Attachments -->
+        <button class="btn-plus-attach" id="btn-plus-attach" title="Add File, Folder, or Link">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+
+        <!-- Plus Dropdown Menu -->
+        <div class="attach-menu-dropdown" id="attach-menu">
+          <label class="attach-menu-item">
+            <svg width="16" height="16" fill="none" stroke="var(--accent-amber)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Upload File (.pdf, .txt)</span>
+            <input type="file" id="file-input" style="display: none;">
+          </label>
+
+          <label class="attach-menu-item">
+            <svg width="16" height="16" fill="none" stroke="var(--accent-cyan)" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Upload Folder (Directory)</span>
+            <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+          </label>
+
+          <div class="attach-menu-item" id="btn-add-link">
+            <svg width="16" height="16" fill="none" stroke="var(--accent-emerald)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span>Add Intranet Link / Wiki</span>
+          </div>
+        </div>
+
+        <!-- Center Search Text Box -->
+        <input type="text" id="search-input" class="main-search-input" placeholder="Search machine error code or SOP (e.g. Alarm 21612, LOTO, motor temp)..." autocomplete="off">
+
+        <!-- Microphone Voice Button -->
+        <button class="btn-action-icon" id="btn-voice" title="Speak query">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="23"/><line x1="8" x2="16" y1="23" y2="23"/></svg>
+        </button>
+
+        <!-- Send / Search Button -->
+        <button class="btn-search-send" id="btn-send" title="Search">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
